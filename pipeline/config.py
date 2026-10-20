@@ -153,7 +153,8 @@ KEN_BURNS_CYCLE = ["in", "pan_right", "out", "pan_left", "in", "pan_up"]
 # --- Captions ---------------------------------------------------------------
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cuda")
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
-CAPTION_FONT = BRAND["display_font"]
+# Font family for captions. Set e.g. "Noto Sans KR" for Korean (Sora has no Hangul).
+CAPTION_FONT = os.getenv("CAPTION_FONT", BRAND["display_font"])
 CAPTION_FONTSIZE = 84
 CAPTION_MARGIN_H = 140          # left+right margin so text wraps and never overflows
 CAPTION_MARGIN_V = 700          # distance from bottom (sits in the lower-middle)

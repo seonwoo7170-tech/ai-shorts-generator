@@ -12,6 +12,13 @@ Usage:
   python run.py build-watermark       (re)build the watermark overlay
   python run.py list                  list generated videos
   python run.py serve                 launch the review/workflow dashboard
+
+Shopping shorts (Krea API + Meta AI / Vibes / Dola handoff):
+  python run.py shop make <product.json|url> [--auto]   plan + Krea scenes + handoff packet
+  python run.py shop resume <video_dir> [--auto]        pick up dropped files and render
+  python run.py shop drop <video_dir> 1=file.mp4 ...    copy downloads into place by scene
+  python run.py shop status                             list shopping shorts
+  (--auto fills scenes with no dropped file via SHOP_MANUAL_FALLBACK instead of waiting)
 """
 from __future__ import annotations
 
@@ -33,6 +40,28 @@ def batch(n: int) -> None:
         step(f"=== video {i+1}/{n} ===")
         final = make(None)
         print(f"[DONE] {final}")
+
+
+def shop(args: list[str]) -> None:
+    from shopping import produce
+    from shopping.product import load_products
+
+    auto = "--auto" in args
+    args = [a for a in args if a != "--auto"]
+    sub = args[0] if args else ""
+    if sub == "make" and len(args) > 1:
+        for i, product in enumerate(load_products(args[1]), 1):
+            step(f"=== product {i}: {product.name} ===")
+            print(f"[DONE] {produce.start(product, fill_missing=auto)}")
+    elif sub == "resume" and len(args) > 1:
+        print(f"[DONE] {produce.resume(args[1], fill_missing=auto)}")
+    elif sub == "drop" and len(args) > 2:
+        produce.import_dropped(args[1], args[2:])
+    elif sub == "status":
+        for row in produce.status():
+            print(f"{row['status']:16} {row['dir']}")
+    else:
+        print(__doc__)
 
 
 def setup() -> None:
@@ -83,6 +112,8 @@ def main() -> None:
     elif cmd == "list":
         for v in state.list_videos():
             print(f"{v['date']}  {v['status']:10}  {v['slug']}")
+    elif cmd == "shop":
+        shop(args[1:])
     elif cmd == "serve":
         from dashboard.app import run_server
         run_server()

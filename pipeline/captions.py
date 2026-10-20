@@ -101,7 +101,7 @@ def _run_whisper(audio_path: Path, device: str, compute: str) -> list[dict]:
 
 def _norm(w: str) -> str:
     import re
-    return re.sub(r"[^a-z0-9']", "", w.lower())
+    return re.sub(r"[^\w']", "", w.lower())   # \w keeps Hangul/CJK for alignment
 
 
 def _align_to_script(wwords: list[dict], true_text: str) -> list[dict]:

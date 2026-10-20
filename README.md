@@ -49,6 +49,16 @@ topic ─▶ script (OpenAI, structured JSON)
 
 Each scene is a cinematic moving image; the only on-screen text is the karaoke captions, so the **voice carries the message**. Output lands in `output/{date}-{slug}/final.mp4` (1080×1920) alongside a `script.json` with all the platform copy.
 
+## 🛒 Shopping shorts (Krea · Meta AI · Vibes · Dola)
+
+A product-to-short mode: `python run.py shop make data/products.example.json`.
+Krea scenes are generated through its API (the real product photo animated via
+image-to-video). Meta AI, Vibes and Dola have no public API, so their scenes come as
+a copy-paste prompt packet (`handoff/HANDOFF.md`). Drop the downloads in and run
+`shop resume`, or pass `--auto` to fill those scenes with Krea. A real-photo price/CTA
+card, affiliate disclosure and upload copy are generated too.
+Full guide (Korean): [`docs/SHOPPING_KO.md`](docs/SHOPPING_KO.md).
+
 ## 🚀 Quickstart
 
 **Prerequisites:** Python 3.10+ and [FFmpeg](https://ffmpeg.org/download.html) on your `PATH`.
@@ -147,6 +157,7 @@ The scriptwriter's persona lives in [`prompts/scriptgen_system.md`](prompts/scri
 run.py              CLI orchestrator
 pipeline/           config, models, scriptgen, images, animate, stock,
                     library, match, voice, captions, assemble, cards, outro
+shopping/           shopping-shorts mode (Krea API + Meta AI/Vibes/Dola handoff)
 dashboard/          Flask review UI (app.py + templates)
 templates/          HTML/CSS for the watermark + outro overlays
 prompts/            scriptwriter system prompt + presets/ (swap the writer's voice)
