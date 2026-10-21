@@ -86,6 +86,7 @@ python run.py gen-library 10     # AI-generate library clips from library/invent
 python run.py library-stats      # show library counts / usage
 python run.py list               # list generated videos
 python run.py serve              # open the review dashboard at http://127.0.0.1:5000
+python run.py shop "<coupang link>"  # Coupang → Xiaohongshu → Korean shopping short (see below)
 ```
 
 On Windows you can also double-click **`start.bat`** to launch the dashboard and **`stop.bat`** to shut it down.
@@ -111,6 +112,38 @@ On Windows you can also double-click **`start.bat`** to launch the dashboard and
 | **Local images** | SDXL-Turbo on your GPU | free | `IMAGE_BACKEND=local` (+ `requirements-gpu.txt`) |
 
 The **clip library** ties it together: every generated/fetched clip is embedded and cataloged, so the next time a scene is similar enough it **reuses an existing clip** instead of paying to make a new one (tune `MATCH_THRESHOLD`).
+
+## 🛒 Shopping shorts (Coupang Partners × Xiaohongshu)
+
+쿠팡 파트너스 링크 하나로 **샤오홍슈(小红书) 실사용 영상 → 한국어 대본 → TTS → 카라오케 자막 → 1080×1920 MP4 + 설명란/고정댓글 문구**까지 만듭니다.
+
+```
+쿠팡 링크 ─▶ 리다이렉트 추적 → productId, 상품명(og:title)
+          ─▶ 상품명 → 중국어 검색어(LLM) ─▶ 샤오홍슈 검색(로그인된 브라우저) → 영상 노트 후보
+          ─▶ LLM이 상품과 가장 맞는 노트 선택 ─▶ yt-dlp 다운로드 (실패 시 브라우저 폴백)
+          ─▶ 키프레임 4장 + 상품명 → 한국어 쇼핑 대본(영상 길이에 맞춘 글자 수)
+          ─▶ TTS (OpenAI 또는 무료 edge-tts) ─▶ faster-whisper 단어 타이밍 자막
+          ─▶ ffmpeg: 9:16 크롭/블러 배경 + 상단 훅 제목 + 파트너스 고지 + 자막 + BGM
+          ─▶ output/{date}-coupang-{productId}/final.mp4, meta.json, description.txt
+```
+
+```bash
+pip install -r requirements.txt && python -m playwright install chromium
+python run.py xhs-login                       # 최초 1회: 뜨는 브라우저에서 샤오홍슈 QR 로그인
+
+python run.py shop "https://link.coupang.com/a/XXXXX"
+python run.py shop "https://link.coupang.com/a/XXXXX" --name "스테인리스 마늘 다지기"  # 쿠팡이 차단할 때
+python run.py shop "https://link.coupang.com/a/XXXXX" --keyword "压蒜器"             # 검색어 직접 지정
+python run.py shop "https://link.coupang.com/a/XXXXX" --xhs "https://www.xiaohongshu.com/explore/..."
+python run.py shop "https://link.coupang.com/a/XXXXX" --video my_clip.mp4           # 직접 촬영/허락받은 영상
+python run.py shop "..." --note "자취생 타깃으로, 더 웃기게"                           # 대본 추가 요청
+```
+
+- 한국어 자막 폰트: `assets/fonts/`에 Noto Sans KR·Pretendard 등을 넣고 `SHOP_FONT`에 패밀리명 지정(Windows 기본값은 맑은 고딕).
+- 원본 소리는 기본 음소거(`SHOP_ORIGINAL_VOLUME`), `assets/music/`에 BGM을 넣으면 깔립니다.
+- 설명란에는 파트너스 링크, **공정위 추천·보증 고지문**, 원본 출처(작성자·노트 URL)가 자동으로 들어갑니다. 쇼츠 설명란 링크는 클릭이 잘 안 되므로 `meta.json`의 `pinned_comment`를 고정댓글로 쓰세요.
+
+> ⚠️ **저작권 주의.** 샤오홍슈 영상의 저작권은 원작자에게 있고, 샤오홍슈 약관은 자동 수집을 금지합니다. 허락 없이 재업로드해 수익(제휴 수수료)을 내면 저작권 침해 신고·채널 경고, 유튜브 *재사용 콘텐츠* 정책에 따른 수익화 거절 대상이 될 수 있습니다. 원작자에게 사용 허락을 받거나, 셀러/브랜드가 제공한 영상·직접 촬영한 영상(`--video`)을 쓰는 것을 권장합니다. 이 도구는 출처 표기를 자동으로 넣지만 출처 표기가 허락을 대신하지는 않습니다.
 
 ## 💧 Watermark & outro
 

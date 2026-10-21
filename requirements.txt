@@ -9,3 +9,7 @@ flask>=3.0
 fal-client>=0.5
 requests>=2.31
 pillow>=10.0
+# Shopping shorts (python run.py shop): Xiaohongshu download. edge-tts is an
+# optional free Korean TTS backend (SHOP_TTS_BACKEND=edge).
+yt-dlp>=2025.1
+edge-tts>=6.1

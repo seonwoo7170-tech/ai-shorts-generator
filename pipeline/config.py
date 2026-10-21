@@ -169,3 +169,39 @@ SDXL_MODEL = os.getenv("SDXL_MODEL", "stabilityai/sdxl-turbo")
 
 # Narration pacing fallback when no API key is set (offline smoke tests).
 WORDS_PER_MINUTE = 165
+
+# --- Shopping shorts (python run.py shop <coupang link>) ---------------------
+# Coupang Partners Open API keys (optional): turns a plain coupang.com product URL
+# into your affiliate deeplink. Partner short links (link.coupang.com) work without.
+COUPANG_ACCESS_KEY = os.getenv("COUPANG_ACCESS_KEY", "")
+COUPANG_SECRET_KEY = os.getenv("COUPANG_SECRET_KEY", "")
+# Xiaohongshu browser profile (log in once with `python run.py xhs-login`).
+XHS_PROFILE_DIR = DATA / "xhs_profile"
+XHS_HEADLESS = _flag("XHS_HEADLESS", False)
+XHS_MAX_CANDIDATES = int(os.getenv("XHS_MAX_CANDIDATES", "12"))
+# Source clip limits: shorter than MIN is rejected, longer than MAX is trimmed.
+SHOP_MIN_SECONDS = float(os.getenv("SHOP_MIN_SECONDS", "6"))
+SHOP_MAX_SECONDS = float(os.getenv("SHOP_MAX_SECONDS", "45"))
+# Original video audio under the TTS (0 = muted; 0.1-0.2 keeps ambient sound).
+SHOP_ORIGINAL_VOLUME = float(os.getenv("SHOP_ORIGINAL_VOLUME", "0"))
+SHOP_MUSIC_VOLUME = float(os.getenv("SHOP_MUSIC_VOLUME", "0.12"))
+# TTS: "openai" (gpt-4o-mini-tts, OPENAI_API_KEY) or "edge" (free, pip install edge-tts).
+SHOP_TTS_BACKEND = os.getenv("SHOP_TTS_BACKEND", "openai")
+SHOP_TTS_VOICE = os.getenv("SHOP_TTS_VOICE", "nova")              # openai voice
+SHOP_EDGE_VOICE = os.getenv("SHOP_EDGE_VOICE", "ko-KR-SunHiNeural")
+SHOP_EDGE_RATE = os.getenv("SHOP_EDGE_RATE", "+15%")
+SHOP_TTS_INSTRUCTIONS = os.getenv("SHOP_TTS_INSTRUCTIONS", (
+    "밝고 빠른 한국어 쇼핑 쇼츠 내레이터. 친구에게 꿀템을 추천하듯 신나고 자연스럽게, "
+    "핵심 단어는 힘주어 또박또박. 광고 성우처럼 과장하지 말 것."
+))
+# Korean-capable caption font. Drop the .ttf/.otf into assets/fonts/ (e.g. Noto Sans
+# KR, Pretendard) or use one installed on the system.
+SHOP_FONT = os.getenv("SHOP_FONT", "Malgun Gothic" if os.name == "nt" else "Noto Sans CJK KR")
+SHOP_CAPTION_FONTSIZE = int(os.getenv("SHOP_CAPTION_FONTSIZE", "78"))
+SHOP_CAPTION_MARGIN_V = int(os.getenv("SHOP_CAPTION_MARGIN_V", "520"))
+SHOP_CAPTION_MAX_CHARS = int(os.getenv("SHOP_CAPTION_MAX_CHARS", "12"))
+SHOP_VISION = _flag("SHOP_VISION", True)    # describe keyframes so the script matches the clip
+# Required by the Fair Trade Commission guideline + Coupang Partners terms.
+COUPANG_DISCLOSURE = os.getenv("COUPANG_DISCLOSURE", (
+    "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+))

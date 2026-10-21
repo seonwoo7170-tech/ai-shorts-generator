@@ -43,3 +43,7 @@ assets/outro/*
 # keep folder structure + committed templates
 !**/.gitkeep
 !assets/logo/logo.png
+
+# --- shopping shorts: logged-in Xiaohongshu browser profile ---
+data/xhs_profile/
+data/xhs_cookies.txt

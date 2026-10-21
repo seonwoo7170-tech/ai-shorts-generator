@@ -12,6 +12,10 @@ Usage:
   python run.py build-watermark       (re)build the watermark overlay
   python run.py list                  list generated videos
   python run.py serve                 launch the review/workflow dashboard
+  python run.py xhs-login             log in to Xiaohongshu once (saved browser profile)
+  python run.py shop <coupang link> [--name 상품명] [--keyword 中文] [--xhs URL]
+                     [--video file.mp4] [--note "추가 요청"]
+                                      Coupang product -> Xiaohongshu clip -> Korean shopping short
 """
 from __future__ import annotations
 
@@ -51,6 +55,23 @@ def setup() -> None:
     log("setup done.")
 
 
+def _opt(args: list[str], flag: str) -> str | None:
+    if flag in args and args.index(flag) + 1 < len(args):
+        return args[args.index(flag) + 1]
+    return None
+
+
+def shop(args: list[str]) -> None:
+    from pipeline.shop.produce import make_shop
+    if not args or args[0].startswith("--"):
+        print(__doc__)
+        return
+    final = make_shop(args[0], name=_opt(args, "--name") or "",
+                      xhs_url=_opt(args, "--xhs"), video_path=_opt(args, "--video"),
+                      keyword=_opt(args, "--keyword"), instruction=_opt(args, "--note") or "")
+    print(f"\n[DONE] {final}")
+
+
 def main() -> None:
     args = sys.argv[1:]
     cmd = args[0] if args else "make"
@@ -83,6 +104,11 @@ def main() -> None:
     elif cmd == "list":
         for v in state.list_videos():
             print(f"{v['date']}  {v['status']:10}  {v['slug']}")
+    elif cmd == "shop":
+        shop(args[1:])
+    elif cmd == "xhs-login":
+        from pipeline.shop.xhs import login
+        login()
     elif cmd == "serve":
         from dashboard.app import run_server
         run_server()

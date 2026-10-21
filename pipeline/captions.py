@@ -85,13 +85,15 @@ def _dialogue(line: list[dict]) -> str:
     return f"Dialogue: 0,{start},{end},Karaoke,,0,0,0,,{''.join(parts).strip()}"
 
 
-def _run_whisper(audio_path: Path, device: str, compute: str) -> list[dict]:
+def _run_whisper(audio_path: Path, device: str, compute: str,
+                 language: str | None = None) -> list[dict]:
     """Load + transcribe. ctranslate2 errors surface while iterating segments,
     so we materialize the generator here to catch a missing-CUDA failure."""
     from faster_whisper import WhisperModel
 
     model = WhisperModel(config.WHISPER_MODEL, device=device, compute_type=compute)
-    segments, _ = model.transcribe(str(audio_path), word_timestamps=True, vad_filter=True)
+    segments, _ = model.transcribe(str(audio_path), word_timestamps=True, vad_filter=True,
+                                   language=language)
     words: list[dict] = []
     for seg in segments:                       # iteration triggers actual compute
         for w in seg.words or []:
@@ -101,7 +103,7 @@ def _run_whisper(audio_path: Path, device: str, compute: str) -> list[dict]:
 
 def _norm(w: str) -> str:
     import re
-    return re.sub(r"[^a-z0-9']", "", w.lower())
+    return re.sub(r"[^\w']", "", w.lower())   # \w keeps Hangul/CJK for non-English scripts
 
 
 def _align_to_script(wwords: list[dict], true_text: str) -> list[dict]:
@@ -138,13 +140,13 @@ def _align_to_script(wwords: list[dict], true_text: str) -> list[dict]:
     return out
 
 
-def transcribe_words(audio_path: Path) -> list[dict]:
+def transcribe_words(audio_path: Path, language: str | None = None) -> list[dict]:
     if config.WHISPER_DEVICE == "cuda":
         try:
-            return _run_whisper(audio_path, "cuda", "float16")
+            return _run_whisper(audio_path, "cuda", "float16", language)
         except Exception as e:  # noqa: BLE001 - CUDA libs (cublas/cudnn) not present
             log(f"whisper cuda unavailable ({type(e).__name__}); falling back to cpu")
-    return _run_whisper(audio_path, "cpu", "int8")
+    return _run_whisper(audio_path, "cpu", "int8", language)
 
 
 def generate(audio_path: Path, ass_path: Path,
