@@ -139,6 +139,10 @@ python run.py shop "https://link.coupang.com/a/XXXXX" --video my_clip.mp4       
 python run.py shop "..." --note "자취생 타깃으로, 더 웃기게"                           # 대본 추가 요청
 ```
 
+**대시보드에서 후보 고르기** — `python run.py serve` → **Shop** 탭. 링크 입력 → 샤오홍슈 검색 결과를 썸네일·좋아요·작성자와 함께 보여주고(AI 추천 표시), ▶로 미리 본 뒤 카드를 골라 만들면 됩니다. 게시물 URL 직접 입력이나 내 영상 업로드도 됩니다.
+
+**폰에서 쓰기** — PC에서 `DASHBOARD_HOST=0.0.0.0 python run.py serve`로 띄우고 같은 와이파이의 폰 브라우저에서 `http://<PC IP>:5000/shop`을 열면 됩니다. "홈 화면에 추가"하면 앱처럼 전체화면으로 뜹니다. (무거운 작업—브라우저 검색, 다운로드, ffmpeg, whisper—은 PC가 하고 폰은 조작만 합니다.)
+
 - 한국어 자막 폰트: `assets/fonts/`에 Noto Sans KR·Pretendard 등을 넣고 `SHOP_FONT`에 패밀리명 지정(Windows 기본값은 맑은 고딕).
 - 원본 소리는 기본 음소거(`SHOP_ORIGINAL_VOLUME`), `assets/music/`에 BGM을 넣으면 깔립니다.
 - 설명란에는 파트너스 링크, **공정위 추천·보증 고지문**, 원본 출처(작성자·노트 URL)가 자동으로 들어갑니다. 쇼츠 설명란 링크는 클릭이 잘 안 되므로 `meta.json`의 `pinned_comment`를 고정댓글로 쓰세요.

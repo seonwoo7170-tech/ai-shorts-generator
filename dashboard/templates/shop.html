@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}쇼핑 쇼츠 · Shorts Studio{% endblock %}
+{% block subtitle %}쿠팡 → 샤오홍슈 → 쇼츠{% endblock %}
+{% block body %}
+<style>
+  .panel{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:20px;margin-bottom:16px}
+  .panel h2{font-family:'Sora';font-size:18px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .panel h2 .n{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#0a0a0a;font-size:13px;
+    display:inline-flex;align-items:center;justify-content:center;flex:none}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px;font-weight:600}
+  input[type=text],input[type=url],textarea{width:100%;background:#0c1118;border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;color:var(--text);padding:13px;font-size:16px;font-family:inherit}
+  textarea{resize:vertical;min-height:70px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
+  .err{color:#ff7b7b;font-size:13px;margin-top:8px;white-space:pre-wrap}
+  .spin{display:inline-block;width:16px;height:16px;border:3px solid rgba(255,255,255,.2);
+    border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;vertical-align:middle}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .product{display:flex;gap:14px;align-items:center;margin-top:12px}
+  .product img{width:72px;height:72px;border-radius:10px;object-fit:cover;background:#000;flex:none}
+  .product .pn{font-weight:600;line-height:1.35}
+  .product .pid{color:var(--muted);font-size:12px;margin-top:4px;word-break:break-all}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px}
+  .cand{border:2px solid transparent;border-radius:12px;overflow:hidden;background:#0c1118;cursor:pointer;position:relative}
+  .cand.sel{border-color:var(--accent)}
+  .cand .th{position:relative;width:100%;aspect-ratio:3/4;background:#000}
+  .cand .th img,.cand .th video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .cand .badge{position:absolute;top:6px;left:6px;background:var(--accent);color:#0a0a0a;font-size:11px;font-weight:800;
+    padding:3px 8px;border-radius:999px;z-index:2}
+  .cand .play{position:absolute;right:6px;bottom:6px;z-index:2;background:rgba(0,0,0,.65);color:#fff;border:0;
+    border-radius:8px;padding:6px 9px;font-size:12px;cursor:pointer}
+  .cand .meta{padding:8px 9px;font-size:12px;line-height:1.35}
+  .cand .meta .likes{color:var(--accent);font-weight:700}
+  .cand .meta .by{color:var(--muted)}
+  .stage{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;margin-top:12px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .hidden{display:none !important}
+  @media (max-width:640px){
+    .grid{grid-template-columns:repeat(2,1fr);gap:8px}
+    .btn{width:100%;justify-content:center}
+  }
+</style>
+
+<div class="panel" id="p1">
+  <h2><span class="n">1</span> 쿠팡 파트너스 링크</h2>
+  <input type="url" id="link" placeholder="https://link.coupang.com/a/XXXXX" inputmode="url">
+  <label>상품명 (쿠팡이 차단해서 못 읽어올 때만)</label>
+  <input type="text" id="name" placeholder="예) 스테인리스 마늘 다지기">
+  <div class="row"><button class="btn" id="b1" onclick="step1()">상품 확인</button><span id="s1"></span></div>
+  <div class="err" id="e1"></div>
+  <div class="product hidden" id="product">
+    <img id="pimg" alt=""><div><div class="pn" id="pname"></div><div class="pid" id="purl"></div></div>
+  </div>
+</div>
+
+<div class="panel hidden" id="p2">
+  <h2><span class="n">2</span> 원본 영상 고르기</h2>
+  <div class="row">
+    <input type="text" id="keyword" placeholder="중국어 검색어 (비우면 AI가 상품명으로 만듦)" style="flex:1;min-width:200px">
+    <button class="btn" id="b2" onclick="search()">샤오홍슈 검색</button>
+  </div>
+  <div class="stage hidden" id="s2"><span class="spin"></span><span id="s2t"></span></div>
+  <div class="err" id="e2"></div>
+  <div class="hint" id="kwinfo"></div>
+  <div class="grid" id="grid"></div>
+  <div class="hint">▶ 를 누르면 영상을 받아서 미리 보여줘요 (첫 재생은 몇 초 걸림). 카드를 누르면 선택.</div>
+  <label>또는 샤오홍슈 게시물 URL 직접 입력</label>
+  <input type="url" id="xhsurl" placeholder="https://www.xiaohongshu.com/explore/...">
+  <label>또는 내 영상 업로드 (직접 찍었거나 사용 허락받은 영상)</label>
+  <input type="file" id="file" accept="video/*">
+</div>
+
+<div class="panel hidden" id="p3">
+  <h2><span class="n">3</span> 만들기</h2>
+  <label>대본 추가 요청 (선택)</label>
+  <textarea id="note" placeholder="예) 자취생 타깃으로, 가격 언급 없이, 더 웃기게"></textarea>
+  <div class="row"><button class="btn" id="b3" onclick="produce()" disabled>쇼츠 만들기</button></div>
+  <div class="stage hidden" id="s3"><span class="spin"></span><span id="s3t"></span></div>
+  <div class="err" id="e3"></div>
+  <div class="row hidden" id="done"><a class="btn" id="open">영상 열기</a></div>
+</div>
+
+<script>
+let SID = null, SEL = null;
+const $ = id => document.getElementById(id);
+const post = (u, b) => fetch(u, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(b)}).then(r => r.json());
+
+async function poll(job, onStage) {
+  for (;;) {
+    const j = await fetch('/api/job/' + job).then(r => r.json());
+    if (j.stage === 'error') throw new Error(j.error || 'failed');
+    onStage(j);
+    if (j.stage === 'done') return j;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+}
+
+async function step1() {
+  $('e1').textContent = ''; $('b1').disabled = true; $('s1').innerHTML = '<span class="spin"></span>';
+  try {
+    const r = await post('/api/shop/product', {link: $('link').value, name: $('name').value});
+    if (r.error) throw new Error(r.error);
+    SID = r.sid;
+    $('pname').textContent = r.product.name;
+    $('purl').textContent = r.product.affiliate_url;
+    $('pimg').src = r.product.image || '';
+    $('pimg').style.display = r.product.image ? '' : 'none';
+    $('product').classList.remove('hidden');
+    $('p2').classList.remove('hidden'); $('p3').classList.remove('hidden');
+    updateReady();
+  } catch (e) { $('e1').textContent = e.message; }
+  $('b1').disabled = false; $('s1').innerHTML = '';
+}
+
+async function search() {
+  if (!SID) return;
+  $('e2').textContent = ''; $('grid').innerHTML = ''; $('b2').disabled = true;
+  $('s2').classList.remove('hidden'); $('s2t').textContent = '검색 중…';
+  try {
+    const r = await post('/api/shop/search', {sid: SID, keyword: $('keyword').value});
+    const j = await poll(r.job, j => $('s2t').textContent = j.stage);
+    $('kwinfo').textContent = '검색어: ' + (j.keywords || []).join(' / ') + ' · ' + j.candidates.length + '개 후보';
+    render(j.candidates, j.best);
+  } catch (e) { $('e2').textContent = e.message; }
+  $('s2').classList.add('hidden'); $('b2').disabled = false;
+}
+
+function render(cands, best) {
+  const g = $('grid'); g.innerHTML = '';
+  cands.forEach(c => {
+    const d = document.createElement('div'); d.className = 'cand'; d.dataset.id = c.note_id;
+    d.innerHTML = `<div class="th">${c.note_id === best ? '<span class="badge">AI 추천</span>' : ''}
+        <img src="/api/shop/thumb/${SID}/${c.note_id}" loading="lazy" onerror="this.style.display='none'">
+        <button class="play" onclick="event.stopPropagation();play('${c.note_id}',this)">▶</button></div>
+      <div class="meta"><span class="likes">♥ ${c.likes.toLocaleString()}</span> <span class="by">${esc(c.author)}</span><br>${esc(c.title)}</div>`;
+    d.onclick = () => select(c.note_id);
+    g.appendChild(d);
+  });
+  if (best) select(best);
+}
+
+function play(id, btn) {
+  const th = btn.parentElement;
+  let v = th.querySelector('video');
+  if (v) { v.paused ? v.play() : v.pause(); return; }
+  v = document.createElement('video'); v.src = `/api/shop/preview/${SID}/${id}`;
+  v.controls = true; v.playsInline = true; v.muted = true; v.autoplay = true;
+  v.onerror = () => { v.remove(); $('e2').textContent = '이 후보는 다운로드에 실패했어요. 다른 후보를 골라주세요.'; };
+  th.appendChild(v);
+}
+
+function select(id) {
+  SEL = id; $('xhsurl').value = ''; $('file').value = '';
+  document.querySelectorAll('.cand').forEach(el => el.classList.toggle('sel', el.dataset.id === id));
+  updateReady();
+}
+$('xhsurl').addEventListener('input', () => { if ($('xhsurl').value) { SEL = null; document.querySelectorAll('.cand').forEach(el => el.classList.remove('sel')); } updateReady(); });
+$('file').addEventListener('change', () => { if ($('file').files.length) { SEL = null; document.querySelectorAll('.cand').forEach(el => el.classList.remove('sel')); } updateReady(); });
+function updateReady() { $('b3').disabled = !(SID && (SEL || $('xhsurl').value || $('file').files.length)); }
+
+async function produce() {
+  $('e3').textContent = ''; $('b3').disabled = true; $('done').classList.add('hidden');
+  $('s3').classList.remove('hidden'); $('s3t').textContent = '시작…';
+  const fd = new FormData();
+  fd.append('sid', SID); fd.append('note_text', $('note').value);
+  if (SEL) fd.append('note', SEL);
+  if ($('xhsurl').value) fd.append('xhs_url', $('xhsurl').value);
+  if ($('file').files.length) fd.append('file', $('file').files[0]);
+  try {
+    const r = await fetch('/api/shop/produce', {method: 'POST', body: fd}).then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    const j = await poll(r.job, j => $('s3t').textContent = j.stage);
+    $('open').href = '/v/' + j.vid; $('done').classList.remove('hidden');
+  } catch (e) { $('e3').textContent = e.message; }
+  $('s3').classList.add('hidden'); $('b3').disabled = false;
+}
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+</script>
+{% endblock %}

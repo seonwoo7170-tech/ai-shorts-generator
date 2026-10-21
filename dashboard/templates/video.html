@@ -24,6 +24,7 @@
   @keyframes s{to{transform:rotate(360deg)}}
   .hidden{display:none}
   .del{background:transparent;border:1px solid rgba(239,68,68,.5);color:#EF4444}
+  @media (max-width:760px){.layout{grid-template-columns:1fr}video.player{width:100%;max-width:340px}}
 </style>
 
 <a class="back" href="/">← all videos</a>
@@ -67,8 +68,12 @@
 
     {{ copyblock("YouTube title", s.youtube_title) }}
     {{ copyblock("YouTube description", s.youtube_description) }}
+    {% if s.shop %}
+    {{ copyblock("고정댓글 (파트너스 링크)", s.tiktok_caption) }}
+    {% else %}
     {{ copyblock("TikTok caption", s.tiktok_caption) }}
     {{ copyblock("X / Twitter", s.x_caption) }}
+    {% endif %}
 
     <div class="block"><h3>Hashtags</h3><button class="copy" onclick="copyText(this)">Copy</button>
       <p class="val">{% for h in s.hashtags %}#{{ h }} {% endfor %}</p>

@@ -48,6 +48,9 @@ def _videos() -> list[dict]:
         for d in sorted(config.OUTPUT.iterdir(), reverse=True):
             if (d / "script.json").exists() and (d / "final.mp4").exists():
                 data = read_json(d / "script.json")
+                if (d / "manifest.json").exists():     # shopping shorts: product name
+                    data.setdefault("topic", read_json(d / "manifest.json")
+                                    .get("product", {}).get("name", d.name))
                 items.append({"id": d.name, "topic": data.get("topic", d.name),
                               "title": data.get("youtube_title", "")})
     return items
@@ -108,6 +111,12 @@ def video(vid: str):
         abort(404)
     s = read_json(d / "script.json")
     manifest = read_json(d / "manifest.json") if (d / "manifest.json").exists() else {}
+    if (d / "meta.json").exists():            # shopping short: merge the platform copy
+        meta = read_json(d / "meta.json")
+        s = {**s, "shop": True, "topic": manifest.get("product", {}).get("name", vid),
+             "youtube_description": meta.get("description", ""),
+             "tiktok_caption": meta.get("pinned_comment", ""), "x_caption": "",
+             "scenes": [{"index": i + 1, "narration": ln} for i, ln in enumerate(s.get("lines", []))]}
     return render_template("video.html", vid=vid, s=s, brand=config.BRAND,
                            music=_music_files(), current_music=manifest.get("music", ""),
                            current_volume=manifest.get("music_volume", 0.16))
@@ -124,6 +133,19 @@ def library_page():
 @app.route("/create")
 def create_page():
     return render_template("create.html", brand=config.BRAND)
+
+
+@app.route("/shop")
+def shop_page():
+    return render_template("shop.html", brand=config.BRAND)
+
+
+@app.route("/manifest.webmanifest")
+def webmanifest():
+    """Lets a phone 'Add to Home Screen' the dashboard as a standalone app."""
+    return jsonify({"name": "Shorts Studio", "short_name": "Shorts", "start_url": "/shop",
+                    "display": "standalone", "background_color": config.BRAND["bg"],
+                    "theme_color": config.BRAND["bg"], "icons": []})
 
 
 # ---------- media ----------
@@ -233,6 +255,141 @@ def api_produce():
 @app.get("/api/job/<job_id>")
 def api_job(job_id: str):
     return jsonify(JOBS.get(job_id, {"stage": "unknown"}))
+
+
+# ---------- shopping shorts (Coupang -> Xiaohongshu) ----------
+SHOP_SESSIONS: dict[str, dict] = {}   # sid -> {product, notes}
+
+
+@app.post("/api/shop/product")
+def api_shop_product():
+    """Step 1: resolve the Coupang link. Returns a session id for the next steps."""
+    from pipeline.shop import coupang
+
+    data = request.get_json(force=True)
+    link = (data.get("link") or "").strip()
+    if not link:
+        return jsonify({"error": "link required"}), 400
+    try:
+        product = coupang.get_product(link, name=(data.get("name") or "").strip())
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"error": str(e)}), 400
+    sid = uuid.uuid4().hex[:8]
+    SHOP_SESSIONS[sid] = {"product": product, "notes": {}}
+    return jsonify({"sid": sid, "product": product.to_dict()})
+
+
+@app.post("/api/shop/search")
+def api_shop_search():
+    """Step 2: search Xiaohongshu (background job; result carries the candidates)."""
+    from pipeline.shop import shopscript, xhs
+
+    data = request.get_json(force=True)
+    sess = SHOP_SESSIONS.get(data.get("sid", ""))
+    if not sess:
+        return jsonify({"error": "unknown session"}), 404
+    keyword = (data.get("keyword") or "").strip()
+
+    def job(set_stage):
+        product = sess["product"]
+        keywords = [keyword] if keyword else shopscript.search_keywords(product.name)
+        notes = []
+        for kw in keywords:
+            set_stage(f"샤오홍슈 검색: {kw}")
+            try:
+                notes = xhs.search_videos(kw)
+            except RuntimeError:
+                continue
+            if notes:
+                break
+        if not notes:
+            raise RuntimeError("검색 결과가 없습니다. 로그인(xhs-login) 상태나 검색어를 확인하세요.")
+        best = shopscript.pick_note(product.name, notes) if len(notes) > 1 else 0
+        sess["notes"] = {n.note_id: n for n in notes}
+        set_stage("done", keywords=keywords, best=notes[best].note_id if best >= 0 else None,
+                  candidates=[n.to_dict() for n in notes])
+
+    return jsonify({"job": _spawn(job)})
+
+
+@app.get("/api/shop/thumb/<sid>/<note_id>")
+def api_shop_thumb(sid: str, note_id: str):
+    """Proxy a candidate's cover image (the CDN wants a xiaohongshu Referer)."""
+    import requests as rq
+    from flask import Response
+
+    note = (SHOP_SESSIONS.get(sid) or {}).get("notes", {}).get(note_id)
+    if not note or not note.cover:
+        abort(404)
+    r = rq.get(note.cover, headers={"Referer": "https://www.xiaohongshu.com/"}, timeout=15)
+    return Response(r.content, mimetype=r.headers.get("Content-Type", "image/jpeg"))
+
+
+@app.get("/api/shop/preview/<sid>/<note_id>")
+def api_shop_preview(sid: str, note_id: str):
+    """Download a candidate (cached) so it can be played in the picker."""
+    from pipeline.shop import xhs
+
+    note = (SHOP_SESSIONS.get(sid) or {}).get("notes", {}).get(note_id)
+    if not note:
+        abort(404)
+    try:
+        f = xhs.preview_path(note)
+    except Exception:  # noqa: BLE001
+        abort(502)
+    return send_file(f, mimetype="video/mp4", conditional=True)
+
+
+@app.post("/api/shop/produce")
+def api_shop_produce():
+    """Step 3: produce with the chosen note, a pasted note URL, or an uploaded file."""
+    import shutil
+
+    from pipeline.shop import compose, xhs
+    from pipeline.shop.produce import produce
+
+    sid = request.form.get("sid", "")
+    sess = SHOP_SESSIONS.get(sid)
+    if not sess:
+        return jsonify({"error": "unknown session"}), 404
+    product = sess["product"]
+    note_id = request.form.get("note", "")
+    xhs_url = (request.form.get("xhs_url") or "").strip()
+    instruction = (request.form.get("note_text") or "").strip()
+    upload = request.files.get("file")
+    video = state.Video(f"coupang-{product.product_id or 'item'}")
+    video.manifest["product"] = product.to_dict()
+    video.save()
+    state.record_video(video, product.name, "generating")
+    uploaded = None
+    if upload and upload.filename:
+        uploaded = video.dir / ("source" + Path(upload.filename).suffix.lower())
+        upload.save(uploaded)
+
+    def job(set_stage):
+        if uploaded:
+            src, note = uploaded, {"local_file": upload.filename}
+        elif note_id and note_id in sess["notes"]:
+            n = sess["notes"][note_id]
+            set_stage("원본 다운로드")
+            cached = xhs.preview_path(n)
+            src = video.dir / f"source_{n.note_id}.mp4"
+            shutil.copyfile(cached, src)
+            note = n.to_dict()
+        elif xhs_url:
+            set_stage("원본 다운로드")
+            src, note = xhs.download(xhs_url, video.dir / "source_xhs"), {"url": xhs_url}
+        else:
+            raise RuntimeError("후보를 고르거나 영상을 올려주세요")
+        info = compose.probe(src)
+        if info["duration"] < config.SHOP_MIN_SECONDS or not info["width"]:
+            raise RuntimeError(f"영상이 너무 짧거나 읽을 수 없습니다 ({info['duration']:.1f}s)")
+        video.manifest["source"] = {**note, "path": src.name, **info}
+        video.save()
+        produce(product, video, src, info, note, instruction=instruction, on_stage=set_stage)
+        set_stage("done", vid=video.dir.name)
+
+    return jsonify({"job": _spawn(job)})
 
 
 # ---------- inventory management ----------
@@ -361,7 +518,9 @@ def api_upload_music():
     return jsonify({"ok": True, "name": dest.name})
 
 
-def run_server(host: str = "127.0.0.1", port: int = 5000) -> None:
+def run_server(host: str | None = None, port: int = 5000) -> None:
+    import os
+    host = host or os.getenv("DASHBOARD_HOST", "127.0.0.1")   # 0.0.0.0 = reachable from your phone
     print(f"\nShorts Studio -> http://{host}:{port}\n")
     app.run(host=host, port=port, debug=False, threaded=True)
 

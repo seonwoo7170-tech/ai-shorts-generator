@@ -32,6 +32,7 @@ class Note:
     title: str
     author: str
     likes: int
+    cover: str = ""
 
     @property
     def url(self) -> str:
@@ -102,6 +103,8 @@ def _parse_items(payload: dict) -> list[Note]:
             title=card.get("display_title", "") or "",
             author=(card.get("user") or {}).get("nickname", "") or "",
             likes=_count((card.get("interact_info") or {}).get("liked_count")),
+            cover=((card.get("cover") or {}).get("url_default")
+                   or (card.get("cover") or {}).get("url") or ""),
         ))
     return notes
 
@@ -185,6 +188,15 @@ def _download_browser(url: str, out: Path) -> Path:
             for chunk in r.iter_content(1 << 16):
                 f.write(chunk)
     return out
+
+
+PREVIEW_DIR = config.DATA / "xhs_preview"
+
+
+def preview_path(note: Note) -> Path:
+    """Download (once) a candidate's video into the preview cache for the dashboard."""
+    PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+    return download(note.url, PREVIEW_DIR / note.note_id)
 
 
 def download(url: str, out: Path) -> Path:

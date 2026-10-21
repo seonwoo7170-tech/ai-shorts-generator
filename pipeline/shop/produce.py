@@ -90,6 +90,14 @@ def make_shop(link: str, name: str = "", xhs_url: str | None = None,
     video.save()
 
     src, info, note = get_source(product, video, xhs_url, video_path, keyword)
+    return produce(product, video, src, info, note, instruction=instruction)
+
+
+def produce(product, video, src: Path, info: dict, note: dict, instruction: str = "",
+            on_stage=None) -> Path:
+    """Second half of make_shop: script, voice, captions, render. Also used by the
+    dashboard once the user has picked (or uploaded) the source clip."""
+    stage = on_stage or (lambda s: None)
     video.manifest["source"] = {**note, "path": src.name, **info}
     video.save()
     clip_seconds = min(info["duration"], config.SHOP_MAX_SECONDS)
@@ -97,16 +105,20 @@ def make_shop(link: str, name: str = "", xhs_url: str | None = None,
         f"(script targets {clip_seconds:.1f}s)")
 
     frames = []
+    stage("대본 작성")
     if config.SHOP_VISION and config.OPENAI_API_KEY:
         frames = shopscript.keyframes(src, clip_seconds, video.scenes_dir)
     script = shopscript.write(product.name, clip_seconds, note.get("title", ""), frames,
                               instruction=instruction)
     write_json(video.script_path, script.model_dump())
 
+    stage("TTS 생성")
     narration = compose.narrate(script.lines, video.audio_dir / "narration.mp3")
     total = compose.LEAD_IN + ffprobe_duration(narration) + compose.TAIL
+    stage("자막 타이밍")
     ass = compose.build_ass(narration, script.lines, script.hook_title, total,
                             video.dir / "captions.ass")
+    stage("렌더링")
     final = compose.render(src, info, narration, ass, total, video.final_path)
 
     step("Copy")

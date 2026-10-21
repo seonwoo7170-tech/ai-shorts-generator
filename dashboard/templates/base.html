@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="{{ brand.bg }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>{% block title %}Shorts Studio{% endblock %}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -25,6 +28,12 @@
     background:linear-gradient(120deg,var(--accent),var(--accent2));color:#0a0a0a;
     font-weight:700;border:none;cursor:pointer;font-size:15px}
   .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--text)}
+  @media (max-width:640px){
+    header{padding:14px 16px;flex-wrap:wrap;gap:10px}
+    header nav{margin-left:0 !important;gap:14px !important;width:100%;overflow-x:auto}
+    header .muted{display:none}
+    .wrap{padding:16px}
+  }
 </style>
 </head>
 <body>
@@ -35,6 +44,7 @@
     <a href="/" style="color:var(--muted)">Videos</a>
     <a href="/create" style="color:var(--muted)">Create</a>
     <a href="/library" style="color:var(--muted)">Library</a>
+    <a href="/shop" style="color:var(--muted)">Shop</a>
   </nav>
   <span class="muted">{% block subtitle %}content pipeline{% endblock %}</span>
 </header>
