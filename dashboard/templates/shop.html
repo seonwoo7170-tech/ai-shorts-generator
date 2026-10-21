@@ -122,7 +122,7 @@ async function search() {
     const j = await poll(r.job, j => $('s2t').textContent = j.stage);
     $('kwinfo').textContent = '검색어: ' + (j.keywords || []).join(' / ') + ' · ' + j.candidates.length + '개 후보';
     render(j.candidates, j.best);
-  } catch (e) { $('e2').textContent = e.message; }
+  } catch (e) { $('e2').innerHTML = esc(e.message) + ' — <a href="/xhs" style="color:var(--accent)">샤오홍슈 로그인</a>'; }
   $('s2').classList.add('hidden'); $('b2').disabled = false;
 }
 

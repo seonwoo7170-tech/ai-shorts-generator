@@ -12,13 +12,43 @@ import threading
 import uuid
 from pathlib import Path
 
-from flask import Flask, abort, jsonify, render_template, request, send_file
+import hmac
+import os
+import secrets
+
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, session
 
 from pipeline import config, drafts, library, scriptgen, state
 from pipeline.util import read_json, slugify
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
+app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+app.config["MAX_CONTENT_LENGTH"] = 600 * 1024 * 1024      # uploaded source clips
 JOBS: dict[str, dict] = {}
+
+
+# ---------- auth (only when DASHBOARD_PASSWORD is set, i.e. cloud deploys) ----------
+@app.before_request
+def _require_login():
+    if not config.DASHBOARD_PASSWORD or session.get("ok"):
+        return None
+    if request.endpoint in ("login", "webmanifest", "static"):
+        return None
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "login required"}), 401
+    return redirect("/login?next=" + request.path)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = ""
+    if request.method == "POST":
+        if hmac.compare_digest(request.form.get("password", ""), config.DASHBOARD_PASSWORD):
+            session.permanent = True
+            session["ok"] = True
+            return redirect(request.args.get("next") or "/shop")
+        error = "비밀번호가 틀렸어요"
+    return render_template("login.html", brand=config.BRAND, error=error)
 
 _AUDIO_EXTS = (".mp3", ".wav", ".m4a", ".ogg", ".flac")
 
@@ -138,6 +168,34 @@ def create_page():
 @app.route("/shop")
 def shop_page():
     return render_template("shop.html", brand=config.BRAND)
+
+
+@app.route("/xhs")
+def xhs_login_page():
+    return render_template("xhs_login.html", brand=config.BRAND)
+
+
+@app.post("/api/xhs/login/start")
+def api_xhs_login_start():
+    from pipeline.shop.xhs import WEB_LOGIN
+    WEB_LOGIN.start()
+    return jsonify({"status": WEB_LOGIN.status})
+
+
+@app.get("/api/xhs/login/status")
+def api_xhs_login_status():
+    from pipeline.shop.xhs import COOKIES_TXT, WEB_LOGIN
+    return jsonify({"status": WEB_LOGIN.status, "error": WEB_LOGIN.error,
+                    "has_qr": bool(WEB_LOGIN.qr), "cookies": COOKIES_TXT.exists()})
+
+
+@app.get("/api/xhs/login/qr.png")
+def api_xhs_login_qr():
+    from flask import Response
+    from pipeline.shop.xhs import WEB_LOGIN
+    if not WEB_LOGIN.qr:
+        abort(404)
+    return Response(WEB_LOGIN.qr, mimetype="image/png", headers={"Cache-Control": "no-store"})
 
 
 @app.route("/manifest.webmanifest")
@@ -518,9 +576,9 @@ def api_upload_music():
     return jsonify({"ok": True, "name": dest.name})
 
 
-def run_server(host: str | None = None, port: int = 5000) -> None:
-    import os
-    host = host or os.getenv("DASHBOARD_HOST", "127.0.0.1")   # 0.0.0.0 = reachable from your phone
+def run_server(host: str | None = None, port: int | None = None) -> None:
+    host = host or config.DASHBOARD_HOST      # 0.0.0.0 = reachable from your phone / the internet
+    port = port or config.DASHBOARD_PORT
     print(f"\nShorts Studio -> http://{host}:{port}\n")
     app.run(host=host, port=port, debug=False, threaded=True)
 

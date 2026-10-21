@@ -56,9 +56,13 @@ def _count(v) -> int:
 
 def _context(p, headless: bool):
     config.XHS_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    import os
+    kwargs = {}
+    if os.getenv("CHROMIUM_PATH"):            # use a system Chromium instead of Playwright's
+        kwargs["executable_path"] = os.getenv("CHROMIUM_PATH")
     return p.chromium.launch_persistent_context(
         str(config.XHS_PROFILE_DIR), headless=headless, locale="zh-CN",
-        viewport={"width": 1280, "height": 900},
+        viewport={"width": 1280, "height": 900}, **kwargs,
     )
 
 
@@ -74,6 +78,80 @@ def login() -> None:
         _export_cookies(ctx)
         ctx.close()
     log(f"profile saved -> {config.XHS_PROFILE_DIR}")
+
+
+def logged_in(ctx) -> bool:
+    return any(c["name"] == "web_session" and c["value"] for c in ctx.cookies()
+               if "xiaohongshu" in c["domain"])
+
+
+class WebLogin:
+    """Headless login for servers: keeps a browser open on xiaohongshu.com, exposes
+    screenshots of the QR code for the dashboard, and saves the profile once the
+    session cookie appears. One instance at a time (the profile dir is locked)."""
+
+    def __init__(self):
+        self.qr: bytes = b""
+        self.status = "idle"      # idle | starting | waiting | done | error
+        self.error = ""
+        self._stop = False
+        self._thread = None
+
+    def start(self):
+        import threading
+        if self._thread and self._thread.is_alive():
+            return
+        self.status, self.error, self.qr, self._stop = "starting", "", b"", False
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._stop = True
+
+    def _run(self):
+        from playwright.sync_api import sync_playwright
+        try:
+            with sync_playwright() as p:
+                ctx = _context(p, headless=True)
+                page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                page.goto(HOME, wait_until="domcontentloaded", timeout=45000)
+                page.wait_for_timeout(2500)
+                if logged_in(ctx):
+                    _export_cookies(ctx)
+                    self.status = "done"
+                    ctx.close()
+                    return
+                for sel in ("#login-btn", ".login-btn", "text=登录"):   # open the login modal
+                    try:
+                        page.locator(sel).first.click(timeout=2000)
+                        break
+                    except Exception:  # noqa: BLE001
+                        continue
+                self.status = "waiting"
+                for _ in range(90):                     # ~3 min, QR refreshes every 2s
+                    if self._stop:
+                        break
+                    page.wait_for_timeout(2000)
+                    try:
+                        qr = page.locator(".qrcode-img, .qrcode img, canvas.qrcode, img[src^='data:image']").first
+                        self.qr = qr.screenshot(timeout=1500) if qr.count() else page.screenshot()
+                    except Exception:  # noqa: BLE001
+                        self.qr = page.screenshot()
+                    if logged_in(ctx):
+                        page.wait_for_timeout(1500)
+                        _export_cookies(ctx)
+                        self.status = "done"
+                        break
+                else:
+                    self.status, self.error = "error", "시간 초과 — 다시 시작해 주세요"
+                if self._stop and self.status == "waiting":
+                    self.status = "idle"
+                ctx.close()
+        except Exception as e:  # noqa: BLE001
+            self.status, self.error = "error", f"{type(e).__name__}: {e}"
+
+
+WEB_LOGIN = WebLogin()
 
 
 def _export_cookies(ctx) -> Path:

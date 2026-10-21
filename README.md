@@ -141,7 +141,16 @@ python run.py shop "..." --note "자취생 타깃으로, 더 웃기게"         
 
 **대시보드에서 후보 고르기** — `python run.py serve` → **Shop** 탭. 링크 입력 → 샤오홍슈 검색 결과를 썸네일·좋아요·작성자와 함께 보여주고(AI 추천 표시), ▶로 미리 본 뒤 카드를 골라 만들면 됩니다. 게시물 URL 직접 입력이나 내 영상 업로드도 됩니다.
 
-**폰에서 쓰기** — PC에서 `DASHBOARD_HOST=0.0.0.0 python run.py serve`로 띄우고 같은 와이파이의 폰 브라우저에서 `http://<PC IP>:5000/shop`을 열면 됩니다. "홈 화면에 추가"하면 앱처럼 전체화면으로 뜹니다. (무거운 작업—브라우저 검색, 다운로드, ffmpeg, whisper—은 PC가 하고 폰은 조작만 합니다.)
+**PC 없이 폰만으로 (클라우드 배포)** — `Dockerfile`이 들어 있어서 Railway 같은 곳에 바로 올라갑니다.
+1. Railway → New Project → GitHub repo 선택 (Dockerfile 자동 인식). 볼륨을 `/storage`에 마운트.
+2. 변수: `OPENAI_API_KEY`, `DASHBOARD_PASSWORD`(필수 — 인터넷에 노출됨), `SECRET_KEY`(아무 긴 문자열), 필요하면 `COUPANG_ACCESS_KEY/SECRET_KEY`.
+3. 도메인 생성 → 폰 브라우저로 열고 비밀번호 입력 → "홈 화면에 추가".
+4. **XHS 로그인** 탭에서 "시작" → 서버가 띄운 샤오홍슈 QR이 폰 화면에 뜨고, 샤오홍슈 앱으로 스캔하면 세션이 서버에 저장됩니다. (서버는 PC 브라우저 없이 헤드리스로 돌아가요.)
+컨테이너엔 ffmpeg·Chromium·Noto CJK 폰트가 포함되고, 데이터는 `/storage`(`DATA_DIR`, `OUTPUT_DIR`)에 남습니다. 메모리는 2GB 이상 권장(whisper small CPU). 같은 Dockerfile로 Fly.io나 일반 VPS(`docker run -p 5000:5000 -v ...`)도 됩니다.
+
+> 데이터센터 IP에서 샤오홍슈가 로그인/검색을 막거나 캡차를 띄울 수 있습니다. 그 경우 "게시물 URL 직접 입력"이나 "내 영상 업로드"로 우회하거나, 집 PC를 서버로 쓰는 쪽이 안정적입니다.
+
+**폰에서 쓰기 (PC가 서버)** — PC에서 `DASHBOARD_HOST=0.0.0.0 python run.py serve`로 띄우고 같은 와이파이의 폰 브라우저에서 `http://<PC IP>:5000/shop`을 열면 됩니다. "홈 화면에 추가"하면 앱처럼 전체화면으로 뜹니다. (무거운 작업—브라우저 검색, 다운로드, ffmpeg, whisper—은 PC가 하고 폰은 조작만 합니다.)
 
 - 한국어 자막 폰트: `assets/fonts/`에 Noto Sans KR·Pretendard 등을 넣고 `SHOP_FONT`에 패밀리명 지정(Windows 기본값은 맑은 고딕).
 - 원본 소리는 기본 음소거(`SHOP_ORIGINAL_VOLUME`), `assets/music/`에 BGM을 넣으면 깔립니다.

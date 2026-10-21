@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}샤오홍슈 로그인 · Shorts Studio{% endblock %}
+{% block subtitle %}xiaohongshu login{% endblock %}
+{% block body %}
+<style>
+  .panel{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:20px;max-width:520px;margin:0 auto}
+  .qr{width:100%;max-width:320px;display:block;margin:16px auto;border-radius:12px;background:#fff}
+  .st{color:var(--muted);font-size:14px;text-align:center;margin-top:10px}
+  .ok{color:#4ade80}.bad{color:#ff7b7b}
+  ol{padding-left:20px;line-height:1.7;font-size:14px;color:var(--muted)}
+</style>
+<div class="panel">
+  <h2 style="font-family:'Sora';font-size:18px;margin-bottom:10px">샤오홍슈 로그인</h2>
+  <ol>
+    <li>아래 <b>시작</b>을 누르면 서버가 샤오홍슈 로그인 QR을 띄워요.</li>
+    <li>다른 폰(또는 이 폰의 샤오홍슈 앱으로 화면을 캡처한 뒤 앱 내 스캔)으로 QR을 스캔해요.</li>
+    <li>"로그인 완료"가 뜨면 끝. 세션은 서버에 저장돼요.</li>
+  </ol>
+  <div style="text-align:center;margin-top:14px"><button class="btn" id="go" onclick="start()">시작</button></div>
+  <img class="qr" id="qr" style="display:none" alt="QR">
+  <div class="st" id="st">{% if cookies %}현재 저장된 세션 있음{% endif %}</div>
+</div>
+<script>
+let timer=null;
+async function start(){
+  document.getElementById('go').disabled=true;
+  await fetch('/api/xhs/login/start',{method:'POST'});
+  clearInterval(timer); timer=setInterval(tick,2000); tick();
+}
+async function tick(){
+  const j=await fetch('/api/xhs/login/status').then(r=>r.json());
+  const st=document.getElementById('st'), qr=document.getElementById('qr');
+  if(j.has_qr){qr.style.display='block';qr.src='/api/xhs/login/qr.png?t='+Date.now();}
+  if(j.status==='waiting'){st.textContent='QR을 스캔해 주세요… (2초마다 새로고침)';st.className='st';}
+  else if(j.status==='starting'){st.textContent='브라우저 여는 중…';}
+  else if(j.status==='done'){st.textContent='✓ 로그인 완료';st.className='st ok';qr.style.display='none';clearInterval(timer);document.getElementById('go').disabled=false;}
+  else if(j.status==='error'){st.textContent='실패: '+j.error;st.className='st bad';clearInterval(timer);document.getElementById('go').disabled=false;}
+}
+</script>
+{% endblock %}

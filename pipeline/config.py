@@ -24,8 +24,9 @@ BRAND_DIR = ASSETS / "brand"
 OUTRO_DIR = ASSETS / "outro"
 TEMPLATES = ROOT / "templates"
 PROMPTS = ROOT / "prompts"
-OUTPUT = ROOT / "output"
-DATA = ROOT / "data"
+# On a server, point these at a persistent volume (see Dockerfile / README "폰만으로").
+OUTPUT = Path(os.getenv("OUTPUT_DIR", ROOT / "output"))
+DATA = Path(os.getenv("DATA_DIR", ROOT / "data"))
 
 # --- Clip library -----------------------------------------------------------
 LIBRARY = ROOT / "library"
@@ -177,7 +178,8 @@ COUPANG_ACCESS_KEY = os.getenv("COUPANG_ACCESS_KEY", "")
 COUPANG_SECRET_KEY = os.getenv("COUPANG_SECRET_KEY", "")
 # Xiaohongshu browser profile (log in once with `python run.py xhs-login`).
 XHS_PROFILE_DIR = DATA / "xhs_profile"
-XHS_HEADLESS = _flag("XHS_HEADLESS", False)
+# Default: visible on a desktop, headless on a server with no display.
+XHS_HEADLESS = _flag("XHS_HEADLESS", os.name != "nt" and not os.getenv("DISPLAY"))
 XHS_MAX_CANDIDATES = int(os.getenv("XHS_MAX_CANDIDATES", "12"))
 # Source clip limits: shorter than MIN is rejected, longer than MAX is trimmed.
 SHOP_MIN_SECONDS = float(os.getenv("SHOP_MIN_SECONDS", "6"))
@@ -205,3 +207,9 @@ SHOP_VISION = _flag("SHOP_VISION", True)    # describe keyframes so the script m
 COUPANG_DISCLOSURE = os.getenv("COUPANG_DISCLOSURE", (
     "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 ))
+
+# --- Dashboard (python run.py serve) -----------------------------------------
+# Set a password when the dashboard is reachable from the internet (cloud deploy).
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
+DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "0.0.0.0" if DASHBOARD_PASSWORD else "127.0.0.1")
+DASHBOARD_PORT = int(os.getenv("PORT", os.getenv("DASHBOARD_PORT", "5000")))

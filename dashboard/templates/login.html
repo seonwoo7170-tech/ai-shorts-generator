@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}로그인 · Shorts Studio{% endblock %}
+{% block body %}
+<form method="post" style="max-width:360px;margin:60px auto;background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:24px">
+  <h2 style="font-family:'Sora';font-size:20px;margin-bottom:14px">비밀번호</h2>
+  <input type="password" name="password" autofocus style="width:100%;background:#0c1118;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:var(--text);padding:13px;font-size:16px">
+  {% if error %}<div style="color:#ff7b7b;font-size:13px;margin-top:8px">{{ error }}</div>{% endif %}
+  <button class="btn" style="width:100%;justify-content:center;margin-top:14px">들어가기</button>
+</form>
+{% endblock %}
