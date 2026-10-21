@@ -145,7 +145,10 @@ def video(vid: str):
         meta = read_json(d / "meta.json")
         s = {**s, "shop": True, "topic": manifest.get("product", {}).get("name", vid),
              "youtube_description": meta.get("description", ""),
-             "tiktok_caption": meta.get("pinned_comment", ""), "x_caption": "",
+             "pinned_comment": meta.get("pinned_comment", ""),
+             "tiktok_caption": meta.get("tiktok_caption", ""),
+             "reels_caption": meta.get("reels_caption", ""),
+             "bio_link": meta.get("bio_link", ""), "x_caption": "",
              "scenes": [{"index": i + 1, "narration": ln} for i, ln in enumerate(s.get("lines", []))]}
     return render_template("video.html", vid=vid, s=s, brand=config.BRAND,
                            music=_music_files(), current_music=manifest.get("music", ""),

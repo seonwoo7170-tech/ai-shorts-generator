@@ -23,6 +23,7 @@ class ShopScript(BaseModel):
     lines: List[str] = Field(..., min_length=3, max_length=10)
     youtube_title: str
     description: str
+    short_caption: str = Field("", description="틱톡/릴스 캡션 한 줄, 40자 이내")
     hashtags: List[str]
 
 
@@ -98,9 +99,10 @@ def _sample(product_name: str) -> ShopScript:
         hook_title="이거 없으면 손해 🔥",
         lines=[f"아직도 이거 없이 사세요?", f"{product_name[:20]}, 써보면 바로 알아요.",
                "쓰는 법도 진짜 간단해요.", "한 번 쓰면 계속 손이 가요.",
-               "고정댓글 링크에서 확인하세요."],
+               "링크는 프로필이랑 댓글에 있어요."],
         youtube_title=f"{product_name[:30]} #shorts",
         description=f"{product_name} 실사용 영상.",
+        short_caption="이거 하나로 끝. 링크는 프로필에 👆",
         hashtags=["쿠팡추천", "꿀템", "살림템", "쇼핑", "추천템", "쿠팡"],
     )
 

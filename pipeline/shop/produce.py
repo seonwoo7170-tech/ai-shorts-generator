@@ -70,14 +70,31 @@ def get_source(product, video, xhs_url: str | None, video_path: str | None,
     return _auto_source(product, video, keyword)
 
 
+def _credit(note: dict) -> str:
+    if not note.get("url"):
+        return ""
+    who = f" @{note['author']}" if note.get("author") else ""
+    return f"영상 출처: 小红书{who} {note['url'].split('?')[0]}"
+
+
+def _tags(script, n: int | None = None) -> str:
+    return " ".join(f"#{t.lstrip('#')}" for t in script.hashtags[:n])
+
+
 def _description(product, script, note: dict) -> str:
-    tags = " ".join(f"#{t.lstrip('#')}" for t in script.hashtags)
     parts = [script.description.strip(), "", f"👉 제품 보러가기: {product.affiliate_url}", "",
              config.COUPANG_DISCLOSURE]
-    if note.get("url"):
-        who = f" @{note['author']}" if note.get("author") else ""
-        parts += ["", f"영상 출처: 小红书{who} {note['url'].split('?')[0]}"]
-    return "\n".join(parts + ["", tags])
+    if _credit(note):
+        parts += ["", _credit(note)]
+    return "\n".join(parts + ["", _tags(script)])
+
+
+def _short_caption(script, note: dict, n_tags: int) -> str:
+    """TikTok / Reels: links aren't clickable, so point at the bio. Disclosure stays."""
+    parts = [script.short_caption.strip() or script.lines[0], "", config.COUPANG_DISCLOSURE]
+    if _credit(note):
+        parts.append(_credit(note))
+    return "\n".join(parts + ["", _tags(script, n_tags)])
 
 
 def make_shop(link: str, name: str = "", xhs_url: str | None = None,
@@ -125,6 +142,9 @@ def produce(product, video, src: Path, info: dict, note: dict, instruction: str 
     meta = {"youtube_title": script.youtube_title,
             "description": _description(product, script, note),
             "pinned_comment": f"👉 {product.name}\n{product.affiliate_url}\n\n{config.COUPANG_DISCLOSURE}",
+            "tiktok_caption": _short_caption(script, note, 5),
+            "reels_caption": _short_caption(script, note, 8),
+            "bio_link": product.affiliate_url,
             "hashtags": script.hashtags}
     write_json(video.dir / "meta.json", meta)
     (video.dir / "description.txt").write_text(meta["description"], encoding="utf-8")

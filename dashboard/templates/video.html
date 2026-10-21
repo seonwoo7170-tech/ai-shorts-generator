@@ -69,7 +69,10 @@
     {{ copyblock("YouTube title", s.youtube_title) }}
     {{ copyblock("YouTube description", s.youtube_description) }}
     {% if s.shop %}
-    {{ copyblock("고정댓글 (파트너스 링크)", s.tiktok_caption) }}
+    {{ copyblock("YouTube 고정댓글 (파트너스 링크)", s.pinned_comment) }}
+    {{ copyblock("TikTok 캡션", s.tiktok_caption) }}
+    {{ copyblock("Instagram Reels 캡션", s.reels_caption) }}
+    {{ copyblock("프로필(bio) 링크 — 틱톡·인스타 프로필에 넣기", s.bio_link) }}
     {% else %}
     {{ copyblock("TikTok caption", s.tiktok_caption) }}
     {{ copyblock("X / Twitter", s.x_caption) }}
