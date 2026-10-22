@@ -150,7 +150,16 @@ python run.py shop "..." --note "자취생 타깃으로, 더 웃기게"         
 
 > 데이터센터 IP에서 샤오홍슈가 로그인/검색을 막거나 캡차를 띄울 수 있습니다. 그 경우 "게시물 URL 직접 입력"이나 "내 영상 업로드"로 우회하거나, 집 PC를 서버로 쓰는 쪽이 안정적입니다.
 
-**폰에서 쓰기 (PC가 서버)** — PC에서 `DASHBOARD_HOST=0.0.0.0 python run.py serve`로 띄우고 같은 와이파이의 폰 브라우저에서 `http://<PC IP>:5000/shop`을 열면 됩니다. "홈 화면에 추가"하면 앱처럼 전체화면으로 뜹니다. (무거운 작업—브라우저 검색, 다운로드, ffmpeg, whisper—은 PC가 하고 폰은 조작만 합니다.)
+**내 윈도우 PC를 서버로 (추천 — 무료, 한국 IP, 키가 내 PC에만)**
+1. 설치: Python 3.10+, FFmpeg(`winget install ffmpeg`), 그리고 이 레포에서 `pip install -r requirements.txt` + `python -m playwright install chromium`
+2. `.env`에 `OPENAI_API_KEY=...`와 **`DASHBOARD_PASSWORD=원하는비밀번호`** 추가
+3. **`start-phone.bat`** 더블클릭 → PC가 서버가 됩니다 (실행 중엔 절전 안 함). 종료는 `stop.bat`
+4. 밖에서도 접속하려면 **[Tailscale](https://tailscale.com)** 을 PC와 폰에 설치하고 같은 계정으로 로그인 → 폰 브라우저에서 `http://<PC의 Tailscale IP>:5000/shop` (주소는 `start-phone.bat` 창에 뜸). 공유기 설정·포트 개방 없이 LTE에서도 열리고 외부엔 노출되지 않습니다.
+5. 폰 브라우저 메뉴 → "홈 화면에 추가" 하면 앱처럼 뜹니다.
+6. 샤오홍슈 로그인은 PC에서 `python run.py xhs-login`(브라우저 뜸, QR 스캔) 또는 폰에서 **XHS 로그인** 탭.
+> PC가 켜져 있을 때만 폰에서 쓸 수 있습니다. 부팅 시 자동 실행하려면 `start-phone.bat` 바로가기를 `shell:startup` 폴더에 넣으세요.
+
+**폰에서 쓰기 (같은 와이파이만)** — `start-phone.bat` 창에 뜨는 `http://<PC IP>:5000/shop` 주소를 폰에서 열면 됩니다.
 
 - 한국어 자막 폰트: `assets/fonts/`에 Noto Sans KR·Pretendard 등을 넣고 `SHOP_FONT`에 패밀리명 지정(Windows 기본값은 맑은 고딕).
 - 원본 소리는 기본 음소거(`SHOP_ORIGINAL_VOLUME`), `assets/music/`에 BGM을 넣으면 깔립니다.
